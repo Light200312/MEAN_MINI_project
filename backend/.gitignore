@@ -1,0 +1,82 @@
+# ==============================
+# Python cache / compiled files
+# ==============================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ==============================
+# Virtual environments
+# ==============================
+.venv/
+venv/
+env/
+
+# ==============================
+# Environment variables (SECRETS)
+# ==============================
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Build / packaging
+# ==============================
+build/
+dist/
+wheels/
+*.egg-info/
+.eggs/
+
+# ==============================
+# Logs
+# ==============================
+*.log
+
+# ==============================
+# OS files
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# IDE / Editor
+# ==============================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==============================
+# Python tools
+# ==============================
+.python-version
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# ==============================
+# Executables (VERY IMPORTANT)
+# ==============================
+*.exe
+*.dll
+*.so
+
+# ==============================
+# Local data / uploads
+# ==============================
+data/
+uploads/
+
+# ==============================
+# Node (if mixed project)
+# ==============================
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ==============================
+# Lock files (optional)
+# ==============================
+uv.lock

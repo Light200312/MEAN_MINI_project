@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frontend-Backend Connection Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .test-item {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 5px solid #ddd;
+      background: #f9f9f9;
+    }
+
+    .test-item.running {
+      border-left-color: #ffc107;
+      background: #fffbf0;
+    }
+
+    .test-item.success {
+      border-left-color: #28a745;
+      background: #f0f8f4;
+    }
+
+    .test-item.failed {
+      border-left-color: #dc3545;
+      background: #f8f0f0;
+    }
+
+    .status {
+      display: inline-block;
+      margin-right: 10px;
+      font-size: 20px;
+    }
+
+    .test-name {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .response {
+      margin-top: 10px;
+      padding: 10px;
+      background: white;
+      border-radius: 5px;
+      font-size: 12px;
+      color: #666;
+      max-height: 100px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+
+    .ports {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .port-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .port-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .port-number {
+      font-size: 32px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+
+    .port-status {
+      font-size: 14px;
+      padding: 5px 10px;
+      border-radius: 5px;
+      display: inline-block;
+      margin-top: 10px;
+    }
+
+    .status-running {
+      background: #28a745;
+    }
+
+    .status-stopped {
+      background: #dc3545;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+      margin-top: 20px;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #764ba2;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .summary {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #f0f0f0;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .summary.connected {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .summary.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔗 Frontend-Backend Connection Test</h1>
+
+    <div class="ports">
+      <div class="port-card">
+        <div class="port-label">Frontend</div>
+        <div class="port-number">5173</div>
+        <div class="port-status status-running">Running</div>
+      </div>
+      <div class="port-card">
+        <div class="port-label">Backend</div>
+        <div class="port-number">8000</div>
+        <div class="port-status" id="backendStatus">Checking...</div>
+      </div>
+    </div>
+
+    <button onclick="runTests()" id="testBtn">Run Connection Tests</button>
+
+    <div id="tests"></div>
+    <div id="summary"></div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'http://localhost:8000';
+    const tests = [
+      {
+        name: 'Backend Health Check',
+        url: `${BACKEND_URL}/health`,
+        method: 'GET',
+        description: 'Basic health endpoint'
+      },
+      {
+        name: 'API Root',
+        url: `${BACKEND_URL}/api`,
+        method: 'GET',
+        description: 'API root endpoint'
+      },
+      {
+        name: 'List Conversations',
+        url: `${BACKEND_URL}/api/conversations`,
+        method: 'GET',
+        description: 'Fetch conversations from database'
+      },
+      {
+        name: 'Login Endpoint',
+        url: `${BACKEND_URL}/api/auth/login`,
+        method: 'POST',
+        body: { email: 'test@test.com', password: 'test' },
+        description: 'Authentication endpoint'
+      }
+    ];
+
+    async function runTests() {
+      const testsDiv = document.getElementById('tests');
+      const summaryDiv = document.getElementById('summary');
+      const testBtn = document.getElementById('testBtn');
+
+      testsDiv.innerHTML = '';
+      summaryDiv.innerHTML = '';
+      testBtn.disabled = true;
+
+      let passedTests = 0;
+
+      for (let i = 0; i < tests.length; i++) {
+        const test = tests[i];
+        const testEl = createTestElement(test.name, test.description, 'running');
+        testsDiv.appendChild(testEl);
+
+        try {
+          const options = {
+            method: test.method,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          };
+
+          if (test.body) {
+            options.body = JSON.stringify(test.body);
+          }
+
+          const response = await fetch(test.url, options);
+          let responseData = 'OK';
+
+          if (response.headers.get('content-type')?.includes('application/json')) {
+            try {
+              responseData = JSON.stringify(await response.clone().json(), null, 2).substring(0, 200);
+            } catch (e) {
+              responseData = response.statusText;
+            }
+          }
+
+          const isSuccess = response.ok || response.status < 500;
+          testEl.className = `test-item ${isSuccess ? 'success' : 'failed'}`;
+          testEl.innerHTML = createTestHTML(
+            test.name,
+            test.description,
+            isSuccess ? '✅' : '⚠️',
+            `${response.status} ${response.statusText}`,
+            responseData
+          );
+
+          if (isSuccess) passedTests++;
+        } catch (error) {
+          testEl.className = 'test-item failed';
+          testEl.innerHTML = createTestHTML(
+            test.name,
+            test.description,
+            '❌',
+            'Connection Error',
+            error.message
+          );
+        }
+      }
+
+      // Show summary
+      const allPassed = passedTests === tests.length;
+      summaryDiv.className = `summary ${allPassed ? 'connected' : 'disconnected'}`;
+      summaryDiv.innerHTML = allPassed
+        ? `✅ Connected! ${passedTests}/${tests.length} tests passed`
+        : `⚠️ Partial Connection - ${passedTests}/${tests.length} tests passed`;
+
+      testBtn.disabled = false;
+    }
+
+    function createTestElement(name, description, status) {
+      const el = document.createElement('div');
+      el.className = `test-item ${status}`;
+      el.innerHTML = createTestHTML(name, description, '⏳', 'Testing...', '');
+      return el;
+    }
+
+    function createTestHTML(name, description, status, result, response) {
+      return `
+                <div style="display: flex; justify-content: space-between;">
+                    <div>
+                        <span class="status">${status}</span>
+                        <span class="test-name">${name}</span><br>
+                        <small style="color: #999;">${description}</small>
+                    </div>
+                </div>
+                <div style="margin-top: 8px; color: #666; font-size: 13px;">
+                    <strong>Result:</strong> ${result}
+                </div>
+                ${response ? `<div class="response">Response: ${response}</div>` : ''}
+            `;
+    }
+
+    // Check backend on load
+    window.addEventListener('load', async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/health`, { method: 'GET' });
+        document.getElementById('backendStatus').className = 'port-status status-running';
+        document.getElementById('backendStatus').textContent = 'Running';
+      } catch (error) {
+        document.getElementById('backendStatus').className = 'port-status status-stopped';
+        document.getElementById('backendStatus').textContent = 'Stopped';
+      }
+    });
+  </script>
+</body>
+
+</html>

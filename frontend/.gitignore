@@ -1,0 +1,139 @@
+# ================================================
+# CRITICAL - DO NOT PUSH SENSITIVE DATA
+# ================================================
+
+# Environment variables with API keys, passwords, secrets
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.development.local
+.env.test.local
+secrets/
+
+# ================================================
+# Dependencies - use package.json & lock file
+# ================================================
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# ================================================
+# Build output - auto-generated
+# ================================================
+dist/
+dist-ssr/
+build/
+.vite/
+.next/
+out/
+
+# ================================================
+# Logs and debugging
+# ================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.cache/
+.temp/
+
+# ================================================
+# OS & Platform specific files
+# ================================================
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+*.swp
+*.swo
+*~
+.directory
+Desktop.ini
+
+# ================================================
+# IDE & Editor files (local to each developer)
+# ================================================
+.vscode/*
+!.vscode/extensions.json
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.idea/
+.idea_modules/
+*.iml
+*.iws
+*.ipr
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.c9/
+.eslintcache
+.node_repl_history
+.npm
+.eslintignore
+*.ent
+TAGS
+tags
+gtags.files
+
+# ================================================
+# Testing & Coverage
+# ================================================
+coverage/
+.nyc_output/
+jest-coverage/
+*.lcov
+
+# ================================================
+# Dependencies - OS specific
+# ================================================
+.bin/
+.npm-debug.log
+.pnp
+.pnp.js
+
+# ================================================
+# Misc temporary/backup files
+# ================================================
+*.bak
+*.tmp
+*.backup
+*.swp
+.DS_Store
+.viminfo
+.project
+.classpath
+.factorypath
+
+# ================================================
+# Local development files
+# ================================================
+.env.local
+.env.*.local
+.localrc
+.localrc.*
+
+# ================================================
+# Database & data files (if any)
+# ================================================
+*.db
+*.sqlite
+*.sqlite3
+.data/
+uploads/
+temp/
+tmp/
+
+# ================================================
+# Production builds
+# ================================================
+dist-prod/
+build-prod/
+*.tgz
+*.tar.gz

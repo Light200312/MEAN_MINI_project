@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Debug Console</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'SF Mono', Monaco, monospace;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #58a6ff;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 15px;
+    }
+
+    .section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      color: #79c0ff;
+      font-weight: bold;
+      margin-bottom: 15px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .status-ok {
+      color: #3fb950;
+    }
+
+    .status-error {
+      color: #f85149;
+    }
+
+    .status-warning {
+      color: #d29922;
+    }
+
+    .logs {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 15px;
+      height: 300px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 5px;
+      border-left: 3px solid #30363d;
+      padding-left: 10px;
+    }
+
+    .log-entry.success {
+      border-left-color: #3fb950;
+    }
+
+    .log-entry.error {
+      border-left-color: #f85149;
+    }
+
+    .log-entry.warning {
+      border-left-color: #d29922;
+    }
+
+    .log-entry.info {
+      border-left-color: #79c0ff;
+    }
+
+    .log-time {
+      color: #8b949e;
+      font-size: 11px;
+    }
+
+    .input-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    input {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+    }
+
+    button {
+      background: #238636;
+      color: white;
+      border: 1px solid #2ea043;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+
+    button:hover {
+      background: #2ea043;
+    }
+
+    button:disabled {
+      background: #30363d;
+      color: #8b949e;
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .response-box {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 15px;
+      font-size: 11px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔐 Authentication Debug Console</h1>
+
+    <div class="section">
+      <div class="section-title">Backend Status</div>
+      <div id="backendStatus"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Test Credentials</div>
+      <div class="input-group">
+        <input type="email" id="email" placeholder="Email" value="test@example.com">
+        <input type="password" id="password" placeholder="Password" value="password123">
+      </div>
+      <input type="text" id="username" placeholder="Username (for signup)" value="testuser" style="grid-column: 1;">
+    </div>
+
+    <div class="section">
+      <div class="section-title">Quick Actions</div>
+      <div class="button-group">
+        <button onclick="testBackend()">Test Backend</button>
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="testRegister()">Test Register</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Console Log</div>
+      <div class="logs" id="logs"></div>
+      <button onclick="clearLogs()" style="width: 100%; margin-top: 10px;">Clear Logs</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">API Response</div>
+      <div class="response-box" id="response">Waiting for API call...</div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:8000';
+    const logsEl = document.getElementById('logs');
+    const responseEl = document.getElementById('response');
+
+    function log(message, type = 'info') {
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.innerHTML = `<span class="log-time">${time}</span> ${escapeHtml(message)}`;
+      logsEl.appendChild(entry);
+      logsEl.scrollTop = logsEl.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function clearLogs() {
+      logsEl.innerHTML = '';
+    }
+
+    function setResponse(data) {
+      responseEl.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function testBackend() {
+      log('Testing backend connection...', 'info');
+      try {
+        const response = await fetch(`${API_URL}/health`);
+        if (response.ok) {
+          log('✅ Backend is reachable', 'success');
+          setResponse('Backend is online');
+        } else {
+          log(`⚠️ Backend returned status ${response.status}`, 'warning');
+          setResponse(`Status: ${response.status} ${response.statusText}`);
+        }
+      } catch (error) {
+        log(`❌ Backend unreachable: ${error.message}`, 'error');
+        setResponse(`Error: ${error.message}\n\nMake sure backend is running on port 8000`);
+      }
+    }
+
+    async function testLogin() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        log('❌ Please enter email and password', 'error');
+        return;
+      }
+
+      log(`Attempting login with ${email}...`, 'info');
+      try {
+        const response = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          log(`✅ Login successful`, 'success');
+          setResponse(data);
+        } else {
+          log(`⚠️ Login failed: ${data.detail || data.message || 'Unknown error'}`, 'warning');
+          setResponse(data);
+        }
+      } catch (error) {
+        log(`❌ Login error: ${error.message}`, 'error');
+        setResponse(error.message);
+      }
+    }
+
+    async function testRegister() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!username || !email || !password) {
+        log('❌ Please fill all fields', 'error');
+        return;
+      }
+
+      log(`Attempting registration for ${email}...`, 'info');
+      try {
+        const response = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          log(`✅ Registration successful`, 'success');
+          setResponse(data);
+        } else {
+          log(`⚠️ Registration failed: ${data.detail || data.message || 'Unknown error'}`, 'warning');
+          setResponse(data);
+        }
+      } catch (error) {
+        log(`❌ Registration error: ${error.message}`, 'error');
+        setResponse(error.message);
+      }
+    }
+
+    // Check backend on load
+    window.addEventListener('load', async () => {
+      const statusEl = document.getElementById('backendStatus');
+      try {
+        const response = await fetch(`${API_URL}/health`);
+        statusEl.innerHTML = `<div class="status-ok">✅ Backend is online (${API_URL})</div>`;
+        log('Backend health check passed', 'success');
+      } catch (error) {
+        statusEl.innerHTML = `<div class="status-error">❌ Backend offline (${API_URL})</div><div style="font-size: 11px; margin-top: 5px; color: #8b949e;">Make sure your backend is running</div>`;
+        log(`Backend health check failed: ${error.message}`, 'error');
+      }
+    });
+  </script>
+</body>
+
+</html>
