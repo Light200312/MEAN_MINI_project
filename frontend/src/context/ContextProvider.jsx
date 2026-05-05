@@ -172,14 +172,30 @@ const ContextProvider = ({ children }) => {
 
   const handleSendLLMMessage = async (content) => {
 
-    if (!currentConversationId) return;
-
     setIsLLMLoading(true);
 
     try {
+      // ✅ FIX 1: Auto-create a conversation if none exists
+      let convId = currentConversationId;
+      if (!convId) {
+        if (!user || !user.id) {
+          console.error("[Council] No user logged in, cannot create conversation");
+          setIsLLMLoading(false);
+          return;
+        }
+        const newConv = await api.createConversation(user.id);
+        convId = newConv.id;
+        setCurrentConversationId(newConv.id);
+        setCurrentConversation(newConv);
+        setConversations((prev) => [{
+          id: newConv.id,
+          created_at: newConv.created_at,
+          message_count: 0,
+          title: newConv.title,
+        }, ...prev]);
+      }
 
       const baseConversation = currentConversation || { messages: [] };
-
       const userMessage = { role: "user", content };
 
       setCurrentConversation({
@@ -202,37 +218,50 @@ const ContextProvider = ({ children }) => {
       }));
 
       await api.sendMessageStream(
-        currentConversationId,
+        convId,
         content,
         (eventType, event) => {
           console.log(`[Council] Event received: ${eventType}`, event);
 
           setCurrentConversation((prev) => {
+            const messages = prev.messages.map((m, i) => {
+              // ✅ FIX 2: Deep-copy the last message to avoid mutating shared objects
+              if (i === prev.messages.length - 1 && m.role === "assistant") {
+                return { ...m, loading: { ...m.loading } };
+              }
+              return m;
+            });
 
-            const messages = [...prev.messages];
             const lastIdx = messages.length - 1;
 
             switch (eventType) {
 
               case "stage1_complete":
                 console.log("[Council] Stage 1 complete, responses:", event.data?.length);
-                messages[lastIdx].stage1 = event.data;
-                messages[lastIdx].loading.stage1 = false;
-                messages[lastIdx].loading.stage2 = true;
+                messages[lastIdx] = {
+                  ...messages[lastIdx],
+                  stage1: event.data,
+                  loading: { ...messages[lastIdx].loading, stage1: false, stage2: true },
+                };
                 break;
 
               case "stage2_complete":
                 console.log("[Council] Stage 2 complete, rankings:", event.data?.length);
-                messages[lastIdx].stage2 = event.data;
-                messages[lastIdx].metadata = event.metadata;
-                messages[lastIdx].loading.stage2 = false;
-                messages[lastIdx].loading.stage3 = true;
+                messages[lastIdx] = {
+                  ...messages[lastIdx],
+                  stage2: event.data,
+                  metadata: event.metadata,
+                  loading: { ...messages[lastIdx].loading, stage2: false, stage3: true },
+                };
                 break;
 
               case "stage3_complete":
                 console.log("[Council] Stage 3 complete");
-                messages[lastIdx].stage3 = event.data;
-                messages[lastIdx].loading.stage3 = false;
+                messages[lastIdx] = {
+                  ...messages[lastIdx],
+                  stage3: event.data,
+                  loading: { ...messages[lastIdx].loading, stage3: false },
+                };
                 break;
 
               case "title_complete":
@@ -243,6 +272,8 @@ const ContextProvider = ({ children }) => {
               case "complete":
                 console.log("[Council] Stream complete");
                 setIsLLMLoading(false);
+                // ✅ FIX 3: Reload conversation from backend to sync persisted history
+                loadConversation(convId);
                 break;
 
               case "error":
@@ -285,7 +316,8 @@ const ContextProvider = ({ children }) => {
 
       // Call backend's chat endpoint instead of OpenRouter directly
       // This keeps the API key secure on the backend
-      const response = await fetch("http://localhost:8000/api/chat/simple", {
+      const API_BASE_SIMPLE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8001";
+      const response = await fetch(`${API_BASE_SIMPLE}/api/chat/simple`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

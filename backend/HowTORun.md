@@ -9,7 +9,7 @@ npm install
 
 Add in .env file in the root directory with your OpenRouter API key
 # Start the backend server
-run : uv run uvicorn backend.main:app --reload
+run : uv run uvicorn backend.main:app --reload --port 800
 
 # Start the frontend development server
 npm run dev
